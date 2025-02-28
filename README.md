@@ -1,2 +1,2 @@
-# Enhancing, extending, and analyzing ReFED's capital flows tracker
+# Enhancing, Extending, and Analyzing ReFED's Capital Flows Tracker
 
