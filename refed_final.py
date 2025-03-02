@@ -83,8 +83,6 @@ df = df.loc[(df['DATE'] != 'DATE') & (df['DATE'] != '')].dropna(subset = ['DATE'
 # Exclude null columns
 df = df[df.columns[~df.columns.isnull()]].reset_index()
 
-df.shape
-
 df.head()
 
 """##### Take a quick look at the Solution column"""
