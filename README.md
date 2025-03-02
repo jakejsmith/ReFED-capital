@@ -6,8 +6,8 @@
 This project seeks to enhance ReFED's existing capital flows dataset by doing the following: 
 1. Scraping the ReFED Capital Tracker from ReFED's website
 2. Using a NLP model to predict the "Solution" category for investments where this category is missing
-3. Plotting investment size against the "Solution" category (the real one where available, or the predicted where none was originally listed)
-4. Creating an engine that identifies similar Capital Flows, by integrating semantic similarity algorithms with various news APIs
+3. Plotting investment size against the "Solution" category (the original one where available, or the predicted where none was originally listed)
+4. Creating a semantic similarity engine that identifies similar Capital Flows, by integrating with various news APIs
 
 ## Results
 The supervised NLP model generates predictions of Solution category for ~1,800 investments that were previously missing this field. The out-of-sample accuracy rate for this model was 94.3%. The visualization resulting from that data can be found [here](https://jakejsmith.github.io/refed_capital_tracker.html). 
