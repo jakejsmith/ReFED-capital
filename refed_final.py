@@ -24,6 +24,18 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 
+from bertopic import BERTopic
+from bertopic.vectorizers import ClassTfidfTransformer
+from bertopic.dimensionality import BaseDimensionalityReduction
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+
+from imblearn.over_sampling import RandomOverSampler
+
+from sentence_transformers import SentenceTransformer
+
 """## 1. Scraping the ReFED Capital Tracker
 ##### We begin by grabbing the data from [this table](https://insights-engine.refed.org/capital-tracker/list?dateFrom=2012-01-01&dateTo=2025-02-19&list.page=1&list.searchScope[]=funder_name,funder_desc,recipient_name,recipient_desc&list.sortBy=name&list.view=investments). This involves setting up a scraper with an operation to page through all 58 pages of the table; the `selenium` package works well for this.
 
@@ -97,18 +109,6 @@ print('Number of Categories: ' + str(len(df['SOLUTION'].value_counts()) - 1))
 
 ##### Next we'll apply `BERTopic`, the topic modeling framework based on a prominent language model (BERT), to predict the missing `Solution` values. Specifically, we will deploy BERTopic as a supervised model which we will train on `Company Description`, a field in our table that contains unstructured text describing the recipient of each investment.
 """
-
-from bertopic import BERTopic
-from bertopic.vectorizers import ClassTfidfTransformer
-from bertopic.dimensionality import BaseDimensionalityReduction
-
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-
-from imblearn.over_sampling import RandomOverSampler
-
-from sentence_transformers import SentenceTransformer
 
 """##### Define training and response data"""
 
