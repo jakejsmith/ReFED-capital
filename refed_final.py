@@ -109,11 +109,9 @@ print('Number of Categories: ' + str(len(df['SOLUTION'].value_counts()) - 1))
 ##### The table we just scraped has a useful and fairly detailed 'Solution' column which classifies investments in 46 discrete categories. However, this field is missing for approximately two-thirds of the investments.
 
 ##### Next we'll apply `BERTopic`, the topic modeling framework based on a prominent language model (BERT), to predict the missing `Solution` values. Specifically, we will deploy BERTopic as a supervised model which we will train on `Company Description`, a field in our table that contains unstructured text describing the recipient of each investment.
+
+##### Define training and response data
 """
-
-df = pd.read_parquet('refed.parquet')
-
-"""##### Define training and response data"""
 
 df_reduced = df[['COMPANY DESCRIPTION', 'SOLUTION']].loc[(df['SOLUTION'] != '') & (df['SOLUTION'].notna()) & (df['COMPANY DESCRIPTION'] != '') & (df['COMPANY DESCRIPTION'].notna())]
 
@@ -269,7 +267,7 @@ for n_gram_range_val in [(1, 1), (1, 2), (1, 3)]:
 
         print('Average Recall: ' + str(np.mean(all_recalls)))
         print('Average Precision: ' + str(np.mean(all_precs)))
-        print('Average F1 Score: ' + str(np.mean(all_f1s)))
+        print('Median F1 Score: ' + str(np.median(all_f1s)))
         print('')
 
 """All of the models performed identically, achieving 94.3% accuracy and an F1 score of .94 out-of-sample.
@@ -381,7 +379,7 @@ for p in df_new['Predicted Solution'].unique():
 
 print('Average Recall: ' + str(np.mean(all_recalls)))
 print('Average Precision: ' + str(np.mean(all_precs)))
-print('Average F1 Score: ' + str(np.mean(all_f1s)))
+print('Median F1 Score: ' + str(np.median(all_f1s)))
 
 df_new[['RECIPIENT', 'COMPANY DESCRIPTION', 'SOLUTION', 'Predicted Solution']].to_csv('df_new.csv')
 
