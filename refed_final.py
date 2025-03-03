@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""ReFED Final.ipynb
+"""ReFED Final 03022025.ipynb
 
 # Enhancing, Expanding, and Analyzing ReFED's Capital Tracker
 """
@@ -46,7 +46,6 @@ from sentence_transformers import SentenceTransformer
 x = []
 
 # Positions of the pagination buttons to be "clicked" in sequential order
-    # NOTE: This list will need to be manually adjusted once the number of pages exceed 58
 clicks = sum([list(range(0, 9)), [7] * 42, list(range(8, 14))], [])
 
 # Basic scraper setup
@@ -95,6 +94,8 @@ df = df.loc[(df['DATE'] != 'DATE') & (df['DATE'] != '')].dropna(subset = ['DATE'
 # Exclude null columns
 df = df[df.columns[~df.columns.isnull()]].reset_index()
 
+df.shape
+
 df.head()
 
 """##### Take a quick look at the Solution column"""
@@ -109,6 +110,8 @@ print('Number of Categories: ' + str(len(df['SOLUTION'].value_counts()) - 1))
 
 ##### Next we'll apply `BERTopic`, the topic modeling framework based on a prominent language model (BERT), to predict the missing `Solution` values. Specifically, we will deploy BERTopic as a supervised model which we will train on `Company Description`, a field in our table that contains unstructured text describing the recipient of each investment.
 """
+
+df = pd.read_parquet('refed.parquet')
 
 """##### Define training and response data"""
 
@@ -129,6 +132,8 @@ y_encoded = le.fit_transform(y)  # Convert string labels to numerical labels
 This shows a pretty severe imbalance, with more than a dozen categories that have only 1 sample, while the largest groups have 20+. We will need to address this.
 """
 
+px.histogram(y, x = 'SOLUTION')
+
 y['SOLUTION'].value_counts()
 
 """##### Oversample to address sparsity
@@ -139,14 +144,14 @@ To mitigate bias from the severe imbalance we found above, we apply an oversampl
 ros = RandomOverSampler(random_state=0)
 X_resampled, y_resampled = ros.fit_resample(train, y_encoded)
 
+X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, random_state = 2525, test_size=0.2)
+
 """##### Pre-calculate embeddings
 
 Because BERT and BERTopic rely on document-based embeddings (rather than simple word embeddings), it is not necessary to conduct most of the typical NLP pre-processing (e.g., stemming, lemmatizing, tokenizing, etc.) In fact, [BERTopic documentation warns that these steps can actually undermine the efficacy of the model](https://maartengr.github.io/BERTopic/faq.html#should-i-preprocess-the-data).
 
 However, because determining the document embeddings is cost-intensive, and since we are going to be testing different hyperparameters iteratively, calculating the embeddings ahead of time will drastically speed things up.
 """
-
-X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, random_state = 2525, test_size=0.2)
 
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 embeddings = embedding_model.encode(list(X_train))
@@ -228,10 +233,46 @@ for n_gram_range_val in [(1, 1), (1, 2), (1, 3)]:
         z['Match'] = z['Original Name'] == z['Predicted Name']
 
         print('N-Gram Range: ' + str(n_gram_range_val) + '; Top N Words ' + str(top_n_words_val))
+
+        # accuracy
         acc = z['Match'].value_counts()[0] / len(z)
         print('Accuracy Rate: ' + str(acc))
 
-"""All of the models performed the same, achieving 94.3% accuracy out-of-sample. However, given the severe imbalance we noted earlier, this could exaggerate the model's ability to predict the less-common topics.
+        all_recalls = []
+        all_precs = []
+        all_f1s = []
+
+        for p in z['Predicted Name'].unique():
+
+            # True positives
+            tp = z['Match'].loc[(z['Match'] == True) & (z['Predicted Name'] == p)].value_counts()[0]
+
+            # False negatives
+            if len(z['Match'].loc[(z['Match'] == False) & (z['Original Name'] == p)].value_counts()) == 0:
+                fn = 0
+            else:
+                fn = z['Match'].loc[(z['Match'] == False) & (z['Original Name'] == p)].value_counts()[0]
+
+            if len(z['Match'].loc[(z['Match'] == False) & (z['Predicted Name'] == p)].value_counts()) == 0:
+                fp = 0
+            else:
+                fp = z['Match'].loc[(z['Match'] == False) & (z['Predicted Name'] == p)].value_counts()[0]
+
+            recall = tp / (tp + fn)
+            precision = tp / (tp + fp)
+            f1 = 2 * (precision * recall) / (precision + recall)
+
+            all_recalls.append(recall)
+            all_precs.append(precision)
+            all_f1s.append(f1)
+            print('F1 Score, ' + p + ' : ' + str(f1))
+
+        print('Average Recall: ' + str(np.mean(all_recalls)))
+        print('Average Precision: ' + str(np.mean(all_precs)))
+        print('Average F1 Score: ' + str(np.mean(all_f1s)))
+        print('')
+
+"""All of the models performed identically, achieving 94.3% accuracy and an F1 score of .94 out-of-sample.
 
 ##### Select and train final model
 In this case, all of the models performed identically on the test set. That suggests the exact selection of hyperparameters has little effect; we will therefore revert to the defaults.
@@ -252,7 +293,7 @@ topics, probs = topic_model.fit_transform(X_resampled['COMPANY DESCRIPTION'], y 
 
 """##### Create dictionary to re-map encoded solutions back to names
 
-Unfortunately BERTopic does not seem to retain the original topic names. Thus, in order to which BERTopic-determined topic numbers correspond to which actual topic names, we have to reverse engineer them.
+In order to which BERTopic-determined topic numbers correspond to which actual topic names, we have to reverse engineer them.
 """
 
 topic_output = topic_model.get_topic_info()
@@ -274,7 +315,7 @@ topic_dictionary = dict(zip(topic_output['Topic'], topic_names))
 
 """##### Predict solution categories for full dataset"""
 
-# Subset with non-missing Company Description
+# Take subset with non-missing Company Description
 df_new = df.loc[(df['COMPANY DESCRIPTION'].notna())].reset_index()
 
 solution = df['SOLUTION'].loc[(df['COMPANY DESCRIPTION'].notna())]
@@ -296,6 +337,8 @@ df_new.head()
 
 """##### Evaluate in-sample performance"""
 
+df_new.columns
+
 # Generate match dummy
 df_new['MATCH'] = (df_new['SOLUTION'] == df_new['Predicted Solution'])
 
@@ -307,6 +350,38 @@ df_new['MATCH'] = (df_new['SOLUTION'] == df_new['Predicted Solution'])
 match_results = df_new['MATCH'].loc[(df_new['COMPANY DESCRIPTION'].notna()) & (df_new['COMPANY DESCRIPTION'] != '') & (df_new['SOLUTION'].notna()) & (df_new['SOLUTION'] != '')].value_counts()
 
 print('Overall In-Sample Accuracy Rate: ' + str(match_results[0] / (match_results[0] + match_results[1])))
+
+all_recalls = []
+all_precs = []
+all_f1s = []
+
+for p in df_new['Predicted Solution'].unique():
+
+    # True positives
+    tp = df_new['MATCH'].loc[(df_new['MATCH'] == True) & (df_new['Predicted Solution'] == p)].value_counts()[0]
+
+    # False negatives
+    if len(df_new['MATCH'].loc[(df_new['MATCH'] == False) & (df_new['SOLUTION'] == p)].value_counts()) == 0:
+        fn = 0
+    else:
+        fn = df_new['MATCH'].loc[(df_new['MATCH'] == False) & (df_new['SOLUTION'] == p)].value_counts()[0]
+
+    if len(df_new['MATCH'].loc[(df_new['MATCH'] == False) & (df_new['Predicted Solution'] == p)].value_counts()) == 0:
+        fp = 0
+    else:
+        fp = df_new['MATCH'].loc[(df_new['MATCH'] == False) & (df_new['Predicted Solution'] == p)].value_counts()[0]
+
+    recall = tp / (tp + fn)
+    precision = tp / (tp + fp)
+    f1 = 2 * (precision * recall) / (precision + recall)
+
+    all_recalls.append(recall)
+    all_precs.append(precision)
+    all_f1s.append(f1)
+
+print('Average Recall: ' + str(np.mean(all_recalls)))
+print('Average Precision: ' + str(np.mean(all_precs)))
+print('Average F1 Score: ' + str(np.mean(all_f1s)))
 
 df_new[['RECIPIENT', 'COMPANY DESCRIPTION', 'SOLUTION', 'Predicted Solution']].to_csv('df_new.csv')
 
