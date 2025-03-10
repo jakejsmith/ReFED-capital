@@ -45,12 +45,17 @@ from sentence_transformers import SentenceTransformer
 # Initialize empty list to be populated
 x = []
 
+# update URL with today's date
+today = date.today()
+formatted_date = today.strftime("%Y-%m-%d")
+url = ("https://insights-engine.refed.org/capital-tracker/list?dateFrom=2012-01-01&dateTo=" + formatted_date + "&list.page=1&list.searchScope[]=funder_name,funder_desc,recipient_name,recipient_desc&list.sortBy=name&list.view=investments")
+
 # Positions of the pagination buttons to be "clicked" in sequential order
 clicks = sum([list(range(0, 9)), [7] * 42, list(range(8, 14))], [])
 
 # Basic scraper setup
 driver = webdriver.Firefox()
-raw = driver.get("https://insights-engine.refed.org/capital-tracker/list?dateFrom=2012-01-01&dateTo=2025-02-19&list.page=1&list.searchScope[]=funder_name,funder_desc,recipient_name,recipient_desc&list.sortBy=name&list.view=investments")
+raw = driver.get(url)
 
 for i in clicks:
 
@@ -109,9 +114,11 @@ print('Number of Categories: ' + str(len(df['SOLUTION'].value_counts()) - 1))
 ##### The table we just scraped has a useful and fairly detailed 'Solution' column which classifies investments in 46 discrete categories. However, this field is missing for approximately two-thirds of the investments.
 
 ##### Next we'll apply `BERTopic`, the topic modeling framework based on a prominent language model (BERT), to predict the missing `Solution` values. Specifically, we will deploy BERTopic as a supervised model which we will train on `Company Description`, a field in our table that contains unstructured text describing the recipient of each investment.
-
-##### Define training and response data
 """
+
+df = pd.read_parquet('refed.parquet')
+
+"""##### Define training and response data"""
 
 df_reduced = df[['COMPANY DESCRIPTION', 'SOLUTION']].loc[(df['SOLUTION'] != '') & (df['SOLUTION'].notna()) & (df['COMPANY DESCRIPTION'] != '') & (df['COMPANY DESCRIPTION'].notna())]
 
@@ -124,7 +131,7 @@ y = df_reduced[['SOLUTION']]
 
 # Convert the string labels in 'y' to numerical labels
 le = LabelEncoder()
-y_encoded = le.fit_transform(y)  # Convert string labels to numerical labels
+y_encoded = le.fit_transform(y)
 
 """##### Evaluate imbalance of Solution categories
 This shows a pretty severe imbalance, with more than a dozen categories that have only 1 sample, while the largest groups have 20+. We will need to address this.
@@ -230,7 +237,7 @@ for n_gram_range_val in [(1, 1), (1, 2), (1, 3)]:
 
         z['Match'] = z['Original Name'] == z['Predicted Name']
 
-        print('N-Gram Range: ' + str(n_gram_range_val) + '; Top N Words ' + str(top_n_words_val))
+        print('N-Gram Range: ' + str(n_gram_range_val) + '; Top N Words: ' + str(top_n_words_val))
 
         # accuracy
         acc = z['Match'].value_counts()[0] / len(z)
@@ -263,11 +270,12 @@ for n_gram_range_val in [(1, 1), (1, 2), (1, 3)]:
             all_recalls.append(recall)
             all_precs.append(precision)
             all_f1s.append(f1)
-            print('F1 Score, ' + p + ' : ' + str(f1))
 
         print('Average Recall: ' + str(np.mean(all_recalls)))
         print('Average Precision: ' + str(np.mean(all_precs)))
-        print('Median F1 Score: ' + str(np.median(all_f1s)))
+        print('Macro-Averaged F1 Score: ' + str(np.mean(all_f1s)))
+        hist = px.histogram(all_f1s, title = 'F1 Distribution')
+        hist.show()
         print('')
 
 """All of the models performed identically, achieving 94.3% accuracy and an F1 score of .94 out-of-sample.
@@ -291,7 +299,7 @@ topics, probs = topic_model.fit_transform(X_resampled['COMPANY DESCRIPTION'], y 
 
 """##### Create dictionary to re-map encoded solutions back to names
 
-In order to which BERTopic-determined topic numbers correspond to which actual topic names, we have to reverse engineer them.
+In order to see which BERTopic-determined topic numbers correspond to which actual topic names, we have to reverse engineer them.
 """
 
 topic_output = topic_model.get_topic_info()
@@ -334,8 +342,6 @@ df_new['Predicted Solution'] = df_new['Predicted Solution Number'].astype(int).m
 df_new.head()
 
 """##### Evaluate in-sample performance"""
-
-df_new.columns
 
 # Generate match dummy
 df_new['MATCH'] = (df_new['SOLUTION'] == df_new['Predicted Solution'])
@@ -380,8 +386,12 @@ for p in df_new['Predicted Solution'].unique():
 print('Average Recall: ' + str(np.mean(all_recalls)))
 print('Average Precision: ' + str(np.mean(all_precs)))
 print('Median F1 Score: ' + str(np.median(all_f1s)))
+print('Macro-Averaged F1 Score: ' + str(np.mean(all_f1s)))
 
 df_new[['RECIPIENT', 'COMPANY DESCRIPTION', 'SOLUTION', 'Predicted Solution']].to_csv('df_new.csv')
+
+from google.colab import drive
+drive.mount('/content/drive')
 
 """##### Visualize the topic embeddings in a 2D space
 This shows substantial overlap among many of the topics, which is likely driving much of the mislassification we see.
