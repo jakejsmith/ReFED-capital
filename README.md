@@ -10,7 +10,7 @@ This project seeks to enhance ReFED's existing capital flows dataset by doing th
 4. Creating a semantic similarity engine that identifies similar Capital Flows, by integrating with various news APIs
 
 ## Results
-The supervised NLP model generates predictions of Solution category for ~1,800 investments that were previously missing this field (classifier accuracy: 92.4%; macro-averaged per-class F1 score: 0.79). The enhanced dataset containing predicted solution classes is [here](https://github.com/jakejsmith/ReFED-capital/blob/main/refed_full.csv). The visualization resulting from that data can be found [here](https://jakejsmith.github.io/refed_capital_tracker.html). 
+The supervised NLP model generates predictions of Solution category for ~1,800 investments that were previously missing this field (classifier accuracy: 92.4%; macro-averaged per-class F1 score: 0.79). The enhanced dataset with original and predicted solution classes is [here](https://github.com/jakejsmith/ReFED-capital/blob/main/Scraped%20Data%20with%20Predictions.csv). The visualization resulting from that data can be found [here](https://jakejsmith.github.io/refed_capital_tracker.html). 
 
 The ranked list of news stories identified by the semantic similarity engine can be found [here](https://github.com/jakejsmith/ReFED-capital/blob/main/scores.csv). While this engine is very much in the "proof of concept" stage, it did successfully identify several articles that may be eligible for inclusion in the Capital Flows Tracker:
 - [Papa Johns Canada to Present $73,411 Donation to Second Harvest](https://financialpost.com/globe-newswire/media-advisory-papa-johns-canada-to-present-73411-donation-to-second-harvest)
